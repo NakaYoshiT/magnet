@@ -4,124 +4,39 @@
   <meta charset="UTF-8" />
   <title>画用紙を貼るときのマグネット数を考えよう</title>
   <style>
-    /* ========= 全体レイアウト ========= */
-    body {
-      font-family: "Helvetica Neue", Arial, sans-serif;
-      margin: 0;
-      padding: 0 1rem 3rem;
-      background: #f9fafb;
-      color: #111827;
-    }
-    h1 {
-      text-align: center;
-      font-size: 1.6rem;
-      margin-top: 1rem;
-    }
-
-    /* ========= 黒板エリア ========= */
-    #board {
-      width: 90%;
-      max-width: 900px;
-      height: 320px;
-      margin: 1rem auto;
-      background: #a7cba0;
-      border: 2px solid #8ab48d;
-      position: relative;
-      overflow: hidden;
-      border-radius: 4px;
-      touch-action: none; /* タッチでのスクロール禁止 */
-    }
-
-    /* ========= ツールボックス ========= */
-    #toolbox {
-      width: 90%;
-      max-width: 600px;
-      margin: 1rem auto;
-      padding: 1.5rem 2rem;
-      border: 2px solid #1e56a0;
-      border-radius: 10px;
-      display: flex;
-      gap: 2rem;
-      align-items: center;
-      background: #ffffff;
-    }
-    #toolbox p {
-      margin: 0;
-      font-weight: 600;
-      flex: 1 1 auto;
-      user-select: none;
-    }
-
-    /* ========= 紙とマグネット ========= */
-    .paper {
-      width: 140px;
-      height: 90px;
-      background: #ffffff;
-      border: 2px solid #4b5563;
-      opacity: 0.7;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-      cursor: pointer;
-      touch-action: none; /* タッチ操作の既定動作を抑制 */
-      user-select: none;
-      -webkit-user-drag: none;
-      -webkit-user-select: none;
-    }
-    .magnet {
-      width: 28px;
-      height: 28px;
-      background: #165fa7;
-      border-radius: 50%;
-      border: 2px solid #1b4d86;
-      box-shadow: 1px 1px 4px rgba(0,0,0,0.25);
-      cursor: pointer;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-drag: none;
-      -webkit-user-select: none;
-    }
-    .item {
-      position: absolute;
-      touch-action: none;
-      user-select: none;
-    }
-    .item.paper { z-index: 1; }
-    .item.magnet { z-index: 2; }
-
-    /* ========= 情報表示 ========= */
-    #info {
-      width: 90%;
-      max-width: 600px;
-      margin: 0 auto;
-      text-align: center;
-      font-size: 1.1rem;
-      font-weight: 500;
-      padding-top: 0.5rem;
-    }
-    #info span { margin: 0 0.5rem; }
-    .need { display: none; }
-    #info.good { color: #15803d; }
-    #info.warn { color: #b91c1c; }
+    /* ========= レイアウト ========= */
+    body { font-family:"Helvetica Neue",Arial,sans-serif; margin:0;padding:0 1rem 3rem; background:#f9fafb; color:#111827; }
+    h1 { text-align:center; font-size:1.6rem; margin-top:1rem; }
+    #board { width:90%; max-width:900px; height:320px; margin:1rem auto; background:#a7cba0; border:2px solid #8ab48d; position:relative; overflow:hidden; border-radius:4px; touch-action:none; }
+    #toolbox { width:90%; max-width:600px; margin:1rem auto; padding:1.5rem 2rem; border:2px solid #1e56a0; border-radius:10px; display:flex; gap:2rem; align-items:center; background:#fff; }
+    #toolbox p { margin:0; font-weight:600; flex:1; user-select:none; }
+    .paper { width:140px; height:90px; background:#fff; border:2px solid #4b5563; opacity:0.7; box-shadow:0 1px 3px rgba(0,0,0,0.15); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
+    .magnet { width:28px; height:28px; background:#165fa7; border-radius:50%; border:2px solid #1b4d86; box-shadow:1px 1px 4px rgba(0,0,0,0.25); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
+    .item { position:absolute; touch-action:none; user-select:none; }
+    .item.paper { z-index:1; }
+    .item.magnet { z-index:2; }
+    #info { width:90%; max-width:600px; margin:0 auto; text-align:center; font-size:1.1rem; font-weight:500; padding-top:0.5rem; }
+    #info span { margin:0 0.5rem; }
+    .need { display:none; }
+    #info.good { color:#15803d; }
+    #info.warn { color:#b91c1c; }
   </style>
 </head>
 <body>
   <h1>画用紙を貼るときのマグネット数を考えよう</h1>
-
   <div id="board"></div>
-
   <div id="toolbox">
     <p>右の紙やマグネットをドラッグして黒板へ運ぼう</p>
     <div id="samplePaper" class="paper"></div>
     <div id="sampleMagnet" class="magnet"></div>
   </div>
-
   <div id="info" class="warn">
     <span>紙枚数: <strong id="paperCount">0</strong></span>
     <span class="need">必要マグネット数: <strong id="needCount">0</strong></span>
     <span>置いたマグネット数: <strong id="magnetCount">0</strong></span>
   </div>
-
   <script>
-    (function() {
+    (function(){
       const board = document.getElementById('board');
       const info = {
         paper: document.getElementById('paperCount'),
@@ -129,70 +44,73 @@
         need: document.getElementById('needCount'),
         bar: document.getElementById('info')
       };
-      let counts = { paper: 0, magnet: 0 };
+      let counts = { paper:0, magnet:0 };
       let movingEl = null;
       let offsetX = 0, offsetY = 0;
 
-      function updateInfo() {
-        info.paper.textContent = counts.paper;
+      function updateInfo(){
+        info.paper.textContent  = counts.paper;
         info.magnet.textContent = counts.magnet;
-        const need = counts.paper > 0 ? 2 * (counts.paper + 1) : 0;
-        info.need.textContent = need;
-        if (counts.magnet >= need) {
-          info.bar.classList.replace('warn', 'good');
-        } else {
-          info.bar.classList.replace('good', 'warn');
-        }
+        const need = counts.paper>0 ? 2*(counts.paper+1):0;
+        info.need.textContent   = need;
+        if(counts.magnet>=need) info.bar.classList.replace('warn','good');
+        else                     info.bar.classList.replace('good','warn');
       }
 
-      function createItem(type) {
+      function createItem(type){
         const el = document.createElement('div');
         el.className = `item ${type}`;
-        el.addEventListener('dblclick', () => {
+        // ダブルクリックで削除
+        el.addEventListener('dblclick',()=>{
           board.removeChild(el);
           counts[type]--;
           updateInfo();
         });
-        el.addEventListener('pointerdown', e => {
+        // 移動開始
+        el.addEventListener('pointerdown',e=>{
           e.preventDefault();
           movingEl = el;
           offsetX = e.offsetX;
           offsetY = e.offsetY;
-          document.addEventListener('pointermove', onPointerMove);
-          document.addEventListener('pointerup', onPointerUp);
+          document.addEventListener('pointermove',onPointerMove);
+          document.addEventListener('pointerup',onPointerUp);
         });
         board.appendChild(el);
+        counts[type]++;
+        updateInfo();
         return el;
       }
 
-      function onPointerMove(e) {
-        if (!movingEl) return;
+      function onPointerMove(e){
+        if(!movingEl)return;
         const rect = board.getBoundingClientRect();
-        const x = e.clientX - rect.left - offsetX;
-        const y = e.clientY - rect.top - offsetY;
-        movingEl.style.left = `${x}px`;
-        movingEl.style.top = `${y}px`;
+        const x = e.clientX-rect.left-offsetX;
+        const y = e.clientY-rect.top -offsetY;
+        movingEl.style.left = x+'px';
+        movingEl.style.top  = y+'px';
       }
-      function onPointerUp(e) {
-        if (movingEl) {
+      function onPointerUp(e){
+        if(movingEl){
           movingEl = null;
-          document.removeEventListener('pointermove', onPointerMove);
-          document.removeEventListener('pointerup', onPointerUp);
+          document.removeEventListener('pointermove',onPointerMove);
+          document.removeEventListener('pointerup',onPointerUp);
         }
       }
 
-      ['Paper','Magnet'].forEach(kind => {
-        document.getElementById(`sample${kind}`).addEventListener('pointerdown', e => {
+      ['Paper','Magnet'].forEach(kind=>{
+        const sample = document.getElementById('sample'+kind);
+        sample.addEventListener('pointerdown',e=>{
           e.preventDefault();
           const type = kind.toLowerCase();
-          counts[type]++;
-          updateInfo();
-          const el = createItem(type);
+          const el   = createItem(type);
           const rect = board.getBoundingClientRect();
-          offsetX = el.offsetWidth / 2;
-          offsetY = el.offsetHeight / 2;
-          el.style.left = `${e.clientX - rect.left - offsetX}px`;
-          el.style.top  = `${e.clientY - rect.top  - offsetY}px`;
+          offsetX = el.offsetWidth/2;
+          offsetY = el.offsetHeight/2;
+          el.style.left = (e.clientX-rect.left-offsetX) + 'px';
+          el.style.top  = (e.clientY-rect.top -offsetY) + 'px';
+          movingEl = el;
+          document.addEventListener('pointermove',onPointerMove);
+          document.addEventListener('pointerup',onPointerUp);
         });
       });
 
