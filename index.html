@@ -4,17 +4,27 @@
   <meta charset="UTF-8" />
   <title>画用紙を貼るときのマグネット数を考えよう</title>
   <style>
-    /* ========= レイアウト ========= */
-    body { font-family:"Helvetica Neue",Arial,sans-serif; margin:0;padding:0 1rem 3rem; background:#f9fafb; color:#111827; }
+    /* ========= 全体レイアウト ========= */
+    body { font-family:"Helvetica Neue",Arial,sans-serif; margin:0; padding:0 1rem 3rem; background:#f9fafb; color:#111827; }
     h1 { text-align:center; font-size:1.6rem; margin-top:1rem; }
-    #board { width:90%; max-width:900px; height:320px; margin:1rem auto; background:#a7cba0; border:2px solid #8ab48d; position:relative; overflow:hidden; border-radius:4px; touch-action:none; }
+
+    /* ========= 黒板エリア (大きめ) ========= */
+    #board { width:95%; max-width:1000px; height:360px; margin:1rem auto; background:#a7cba0; border:2px solid #8ab48d; position:relative; overflow:hidden; border-radius:4px; touch-action:none; }
+
+    /* ========= ツールボックス ========= */
     #toolbox { width:90%; max-width:600px; margin:1rem auto; padding:1.5rem 2rem; border:2px solid #1e56a0; border-radius:10px; display:flex; gap:2rem; align-items:center; background:#fff; }
     #toolbox p { margin:0; font-weight:600; flex:1; user-select:none; }
-    .paper { width:140px; height:90px; background:#fff; border:2px solid #4b5563; opacity:0.7; box-shadow:0 1px 3px rgba(0,0,0,0.15); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
-    .magnet { width:28px; height:28px; background:#165fa7; border-radius:50%; border:2px solid #1b4d86; box-shadow:1px 1px 4px rgba(0,0,0,0.25); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
+
+    /* ========= 紙 (大きめ) とマグネット ========= */
+    .paper { width:160px; height:100px; background:#fff; border:2px solid #4b5563; opacity:0.7; box-shadow:0 1px 3px rgba(0,0,0,0.15); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
+    .magnet { width:28px; height:28px; padding:8px; /* ヒット領域を拡大 */ background:#165fa7; border-radius:50%; border:2px solid #1b4d86; box-shadow:1px 1px 4px rgba(0,0,0,0.25); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
+
+    /* ========= 配置アイテム ========= */
     .item { position:absolute; touch-action:none; user-select:none; }
     .item.paper { z-index:1; }
     .item.magnet { z-index:2; }
+
+    /* ========= 情報表示 ========= */
     #info { width:90%; max-width:600px; margin:0 auto; text-align:center; font-size:1.1rem; font-weight:500; padding-top:0.5rem; }
     #info span { margin:0 0.5rem; }
     .need { display:none; }
@@ -51,7 +61,7 @@
       function updateInfo(){
         info.paper.textContent  = counts.paper;
         info.magnet.textContent = counts.magnet;
-        const need = counts.paper>0 ? 2*(counts.paper+1):0;
+        const need = counts.paper>0 ? 2*(counts.paper+1) : 0;
         info.need.textContent   = need;
         if(counts.magnet>=need) info.bar.classList.replace('warn','good');
         else                     info.bar.classList.replace('good','warn');
@@ -60,13 +70,14 @@
       function createItem(type){
         const el = document.createElement('div');
         el.className = `item ${type}`;
-        // ダブルクリックで削除
+        el._type = type;
+        el._isNew = true;
+        el._dragged = false;
         el.addEventListener('dblclick',()=>{
           board.removeChild(el);
           counts[type]--;
           updateInfo();
         });
-        // 移動開始
         el.addEventListener('pointerdown',e=>{
           e.preventDefault();
           movingEl = el;
@@ -76,38 +87,49 @@
           document.addEventListener('pointerup',onPointerUp);
         });
         board.appendChild(el);
-        counts[type]++;
-        updateInfo();
         return el;
       }
 
       function onPointerMove(e){
-        if(!movingEl)return;
+        if(!movingEl) return;
         const rect = board.getBoundingClientRect();
-        const x = e.clientX-rect.left-offsetX;
-        const y = e.clientY-rect.top -offsetY;
-        movingEl.style.left = x+'px';
-        movingEl.style.top  = y+'px';
+        const x = e.clientX - rect.left - offsetX;
+        const y = e.clientY - rect.top - offsetY;
+        movingEl.style.left = x + 'px';
+        movingEl.style.top  = y + 'px';
+        if(movingEl._isNew) movingEl._dragged = true;
       }
+
       function onPointerUp(e){
-        if(movingEl){
-          movingEl = null;
-          document.removeEventListener('pointermove',onPointerMove);
-          document.removeEventListener('pointerup',onPointerUp);
+        if(!movingEl) return;
+        const el = movingEl;
+        document.removeEventListener('pointermove',onPointerMove);
+        document.removeEventListener('pointerup',onPointerUp);
+        if(el._isNew){
+          const rect = board.getBoundingClientRect();
+          const ex = e.clientX - rect.left;
+          const ey = e.clientY - rect.top;
+          if(el._dragged && ex>=0 && ey>=0 && ex<=rect.width && ey<=rect.height){
+            counts[el._type]++;
+            updateInfo();
+          } else {
+            board.removeChild(el);
+          }
+          el._isNew = false;
         }
+        movingEl = null;
       }
 
       ['Paper','Magnet'].forEach(kind=>{
-        const sample = document.getElementById('sample'+kind);
-        sample.addEventListener('pointerdown',e=>{
+        document.getElementById(`sample${kind}`).addEventListener('pointerdown',e=>{
           e.preventDefault();
           const type = kind.toLowerCase();
-          const el   = createItem(type);
+          const el = createItem(type);
           const rect = board.getBoundingClientRect();
           offsetX = el.offsetWidth/2;
           offsetY = el.offsetHeight/2;
           el.style.left = (e.clientX-rect.left-offsetX) + 'px';
-          el.style.top  = (e.clientY-rect.top -offsetY) + 'px';
+          el.style.top  = (e.clientY-rect.top-offsetY) + 'px';
           movingEl = el;
           document.addEventListener('pointermove',onPointerMove);
           document.addEventListener('pointerup',onPointerUp);
