@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>画用紙を貼るときのマグネット数を考えよう</title>
+  <style>
+    /* ========= 全体レイアウト ========= */
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0 1rem 3rem;
+      background: #f9fafb;
+      color: #111827;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-top: 1rem;
+    }
+
+    /* ========= 黒板エリア ========= */
+    #board {
+      width: 90%;
+      max-width: 900px;
+      height: 320px;
+      margin: 1rem auto;
+      background: #a7cba0;
+      border: 2px solid #8ab48d;
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      touch-action: none;
+    }
+
+    /* ========= ツールボックス ========= */
+    #toolbox {
+      width: 90%;
+      max-width: 600px;
+      margin: 1rem auto;
+      padding: 1.5rem 2rem;
+      border: 2px solid #1e56a0;
+      border-radius: 10px;
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      background: #ffffff;
+    }
+    #toolbox p {
+      margin: 0;
+      font-weight: 600;
+      flex: 1 1 auto;
+    }
+
+    /* ========= 紙とマグネット ========= */
+    .paper {
+      width: 140px;
+      height: 90px;
+      background: #ffffff;
+      border: 2px solid #4b5563;
+      opacity: 0.7; /* 少し透明度を上げて重なりを見やすく */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      cursor: pointer;
+    }
+    .magnet {
+      width: 28px;
+      height: 28px;
+      background: #165fa7;
+      border-radius: 50%;
+      border: 2px solid #1b4d86;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.25);
+      cursor: pointer;
+    }
+    .item {
+      position: absolute;
+      touch-action: none;
+    }
+    .item.paper { z-index: 1; }
+    .item.magnet { z-index: 2; }
+
+    /* ========= 情報表示 ========= */
+    #info {
+      width: 90%;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 500;
+      padding-top: 0.5rem;
+    }
+    #info span { margin: 0 0.5rem; }
+    /* 必要マグネット数は非表示 */
+    .need { display: none; }
+    #info.good { color: #15803d; }
+    #info.warn { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>画用紙を貼るときのマグネット数を考えよう</h1>
+
+  <div id="board"></div>
+
+  <div id="toolbox">
+    <p>右の紙やマグネットをドラッグして黒板へ運ぼう</p>
+    <div id="samplePaper" class="paper"></div>
+    <div id="sampleMagnet" class="magnet"></div>
+  </div>
+
+  <div id="info" class="warn">
+    <span>紙枚数: <strong id="paperCount">0</strong></span>
+    <span class="need">必要マグネット数: <strong id="needCount">0</strong></span>
+    <span>置いたマグネット数: <strong id="magnetCount">0</strong></span>
+  </div>
+
+  <script>
+    (function(){
+      const board = document.getElementById('board');
+      const info = {
+        paper: document.getElementById('paperCount'),
+        magnet: document.getElementById('magnetCount'),
+        need: document.getElementById('needCount'),
+        bar: document.getElementById('info')
+      };
+      let counts = { paper: 0, magnet: 0 };
+      let movingEl = null;
+      let offsetX = 0, offsetY = 0;
+
+      // 情報更新
+      function updateInfo() {
+        info.paper.textContent  = counts.paper;
+        info.magnet.textContent = counts.magnet;
+        // 必要マグネット数は非表示だがロジックは維持
+        const need = counts.paper > 0 ? 2 * (counts.paper + 1) : 0;
+        info.need.textContent = need;
+        if (counts.magnet >= need) {
+          info.bar.classList.replace('warn', 'good');
+        } else {
+          info.bar.classList.replace('good', 'warn');
+        }
+      }
+
+      // 要素作成
+      function createItem(type) {
+        const el = document.createElement('div');
+        el.className = `item ${type}`;
+        // ダブルクリックで削除
+        el.addEventListener('dblclick', () => {
+          board.removeChild(el);
+          counts[type]--;
+          updateInfo();
+        });
+        // 移動
+        el.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          movingEl = el;
+          offsetX = e.offsetX;
+          offsetY = e.offsetY;
+          el.setPointerCapture(e.pointerId);
+        });
+        el.addEventListener('pointermove', e => {
+          if (movingEl === el) {
+            const rect = board.getBoundingClientRect();
+            const x = e.clientX - rect.left - offsetX;
+            const y = e.clientY - rect.top  - offsetY;
+            el.style.left = `${x}px`;
+            el.style.top  = `${y}px`;
+          }
+        });
+        el.addEventListener('pointerup', e => {
+          if (movingEl === el) {
+            el.releasePointerCapture(e.pointerId);
+            movingEl = null;
+          }
+        });
+        board.appendChild(el);
+        return el;
+      }
+
+      // サンプルから配置
+      ['Paper','Magnet'].forEach(kind => {
+        document.getElementById(`sample${kind}`).addEventListener('pointerdown', e => {
+          e.preventDefault();
+          const type = kind.toLowerCase();
+          counts[type]++;
+          updateInfo();
+          const el = createItem(type);
+          const rect = board.getBoundingClientRect();
+          offsetX = el.offsetWidth/2;
+          offsetY = el.offsetHeight/2;
+          el.style.left = `${e.clientX - rect.left - offsetX}px`;
+          el.style.top  = `${e.clientY - rect.top  - offsetY}px`;
+          movingEl = el;
+          el.setPointerCapture(e.pointerId);
+        });
+      });
+
+      updateInfo();
+    })();
+  </script>
+</body>
+</html>
