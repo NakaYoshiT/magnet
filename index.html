@@ -22,19 +22,9 @@
 
     /* ========= マグネット (見た目維持＋ヒット領域拡大) ========= */
     .magnet {
-      width: 28px;
-      height: 28px;
-      background: #165fa7;
-      border-radius: 50%;
-      border: 2px solid #1b4d86;
-      /* 透明なシャドウでヒット領域を拡大 */
-      box-shadow: 1px 1px 4px rgba(0,0,0,0.25), 0 0 0 12px rgba(0,0,0,0);
-      cursor: pointer;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-drag: none;
-      -webkit-user-select: none;
-      position: relative;
+      width:28px; height:28px; background:#165fa7; border-radius:50%; border:2px solid #1b4d86;
+      box-shadow:1px 1px 4px rgba(0,0,0,0.25),0 0 0 12px rgba(0,0,0,0);
+      cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; position:relative;
     }
 
     /* ========= 配置アイテム ========= */
@@ -79,10 +69,10 @@
       let offsetX = 0, offsetY = 0;
 
       function updateInfo(){
-        info.paper.textContent  = counts.paper;
+        info.paper.textContent = counts.paper;
         info.magnet.textContent = counts.magnet;
         const need = counts.paper>0 ? 2*(counts.paper+1) : 0;
-        info.need.textContent   = need;
+        info.need.textContent = need;
         if(counts.magnet>=need) info.bar.classList.replace('warn','good');
         else                     info.bar.classList.replace('good','warn');
       }
@@ -92,8 +82,9 @@
         counts = { paper:0, magnet:0 };
         updateInfo();
       }
-
       resetBtn.addEventListener('click', resetAll);
+
+      function clamp(val, min, max){ return Math.min(Math.max(val, min), max); }
 
       function createItem(type){
         const el = document.createElement('div');
@@ -101,12 +92,12 @@
         el._type = type;
         el._isNew = true;
         el._dragged = false;
-        el.addEventListener('dblclick',()=>{
+        el.addEventListener('dblclick', ()=>{
           board.removeChild(el);
           counts[type]--;
           updateInfo();
         });
-        el.addEventListener('pointerdown',e=>{
+        el.addEventListener('pointerdown', e=>{
           e.preventDefault();
           movingEl = el;
           offsetX = e.offsetX;
@@ -121,10 +112,12 @@
       function onPointerMove(e){
         if(!movingEl) return;
         const rect = board.getBoundingClientRect();
-        const x = e.clientX - rect.left - offsetX;
-        const y = e.clientY - rect.top - offsetY;
+        let x = e.clientX - rect.left - offsetX;
+        let y = e.clientY - rect.top - offsetY;
+        x = clamp(x, 0, rect.width - movingEl.offsetWidth);
+        y = clamp(y, 0, rect.height - movingEl.offsetHeight);
         movingEl.style.left = x + 'px';
-        movingEl.style.top  = y + 'px';
+        movingEl.style.top = y + 'px';
         if(movingEl._isNew) movingEl._dragged = true;
       }
 
@@ -135,29 +128,28 @@
         document.removeEventListener('pointerup', onPointerUp);
         if(el._isNew){
           const rect = board.getBoundingClientRect();
-          const ex = e.clientX - rect.left;
-          const ey = e.clientY - rect.top;
-          if(el._dragged && ex>=0 && ey>=0 && ex<=rect.width && ey<=rect.height){
-            counts[el._type]++;
-            updateInfo();
-          } else {
-            board.removeChild(el);
-          }
+          // drop always within board due to clamping
+          counts[el._type]++;
+          updateInfo();
           el._isNew = false;
         }
         movingEl = null;
       }
 
       ['Paper','Magnet'].forEach(kind=>{
-        document.getElementById(`sample${kind}`).addEventListener('pointerdown',e=>{
+        document.getElementById(`sample${kind}`).addEventListener('pointerdown', e=>{
           e.preventDefault();
           const type = kind.toLowerCase();
           const el = createItem(type);
           const rect = board.getBoundingClientRect();
           offsetX = el.offsetWidth/2;
           offsetY = el.offsetHeight/2;
-          el.style.left = (e.clientX-rect.left-offsetX) + 'px';
-          el.style.top  = (e.clientY-rect.top-offsetY) + 'px';
+          let x = e.clientX - rect.left - offsetX;
+          let y = e.clientY - rect.top - offsetY;
+          x = clamp(x, 0, rect.width - el.offsetWidth);
+          y = clamp(y, 0, rect.height - el.offsetHeight);
+          el.style.left = x + 'px';
+          el.style.top = y + 'px';
           movingEl = el;
           document.addEventListener('pointermove', onPointerMove);
           document.addEventListener('pointerup', onPointerUp);
