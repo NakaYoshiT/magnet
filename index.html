@@ -8,7 +8,11 @@
     #board { width:95%; max-width:1000px; height:360px; margin:1rem auto; background:#a7cba0; border:2px solid #8ab48d; position:relative; overflow:hidden; border-radius:4px; touch-action:none; }
     #toolbox { width:90%; max-width:600px; margin:1rem auto; padding:1.5rem 2rem; border:2px solid #1e56a0; border-radius:10px; display:flex; gap:1rem; align-items:center; background:#fff; }
     #toolbox p { margin:0; font-weight:600; flex:1; user-select:none; }
-    #resetBtn { padding:0.5rem 1rem; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:600; }
+    #controls { width:90%; max-width:600px; margin:0.5rem auto; display:flex; justify-content:flex-end; gap:1rem; }
+    button { padding:0.5rem 1rem; border:none; border-radius:4px; cursor:pointer; font-weight:600; }
+    #undoBtn { background:#3b82f6; color:#fff; }
+    #undoBtn:hover { background:#2563eb; }
+    #resetBtn { background:#ef4444; color:#fff; }
     #resetBtn:hover { background:#dc2626; }
     .paper { width:160px; height:100px; background:#fff; border:2px solid #4b5563; opacity:0.7; box-shadow:0 1px 3px rgba(0,0,0,0.15); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
     .magnet { width:28px; height:28px; background:#165fa7; border-radius:50%; border:2px solid #1b4d86; box-shadow:1px 1px 4px rgba(0,0,0,0.25),0 0 0 12px rgba(0,0,0,0); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; position:relative; }
@@ -29,6 +33,9 @@
     <p>右の紙やマグネットをドラッグして黒板へ運ぼう</p>
     <div id="samplePaper" class="paper"></div>
     <div id="sampleMagnet" class="magnet"></div>
+  </div>
+  <div id="controls">
+    <button id="undoBtn">１つ戻す</button>
     <button id="resetBtn">リセット</button>
   </div>
   <div id="info" class="warn">
@@ -39,6 +46,7 @@
   <script>
     (function(){
       const board = document.getElementById('board');
+      const undoBtn = document.getElementById('undoBtn');
       const resetBtn = document.getElementById('resetBtn');
       const info = {
         paper: document.getElementById('paperCount'),
@@ -47,6 +55,7 @@
         bar: document.getElementById('info')
       };
       let counts = { paper:0, magnet:0 };
+      let history = [];
       let movingEl = null;
       let offsetX = 0, offsetY = 0;function updateInfo(){
     info.paper.textContent = counts.paper;
@@ -58,11 +67,22 @@
   }
 
   function resetAll(){
-    document.querySelectorAll('.item').forEach(el => board.removeChild(el));
+    history.forEach(el => board.removeChild(el));
+    history = [];
     counts = { paper:0, magnet:0 };
     updateInfo();
   }
   resetBtn.addEventListener('click', resetAll);
+
+  function undoLast(){
+    const el = history.pop();
+    if(el){
+      board.removeChild(el);
+      counts[el._type]--;
+      updateInfo();
+    }
+  }
+  undoBtn.addEventListener('click', undoLast);
 
   function clamp(val, min, max){ return Math.min(Math.max(val, min), max); }
 
@@ -75,6 +95,8 @@
     el.addEventListener('dblclick', ()=>{
       board.removeChild(el);
       counts[type]--;
+      const idx = history.indexOf(el);
+      if(idx > -1) history.splice(idx, 1);
       updateInfo();
     });
     el.addEventListener('pointerdown', e=>{
@@ -107,8 +129,8 @@
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
     if(el._isNew){
-      const rect = board.getBoundingClientRect();
       counts[el._type]++;
+      history.push(el);
       updateInfo();
       el._isNew = false;
     }
@@ -119,11 +141,7 @@
     document.getElementById(`sample${kind}`).addEventListener('pointerdown', e=>{
       e.preventDefault();
       const type = kind.toLowerCase();
-      // 画用紙は最大7枚まで
-      if(type==='paper' && counts.paper>=7){
-        alert('画用紙は最大7枚までです');
-        return;
-      }
+      if(type==='paper' && counts.paper>=7){ alert('画用紙は最大7枚までです'); return; }
       const el = createItem(type);
       const rect = board.getBoundingClientRect();
       offsetX = el.offsetWidth/2;
