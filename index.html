@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="ja">
+<!DOCTYPE html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <title>画用紙を貼るときのマグネット数を考えよう</title>
@@ -14,7 +15,22 @@
     #undoBtn:hover { background:#2563eb; }
     #resetBtn { background:#ef4444; color:#fff; }
     #resetBtn:hover { background:#dc2626; }
-    .paper { width:160px; height:100px; background:#fff; border:2px solid #4b5563; opacity:0.7; box-shadow:0 1px 3px rgba(0,0,0,0.15); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; }
+    /* 画用紙を正方形（100px × 100px）かつ45度回転 */
+    .paper {
+      width:100px;
+      height:100px;
+      background:#fff;
+      border:2px solid #4b5563;
+      opacity:0.7;
+      box-shadow:0 1px 3px rgba(0,0,0,0.15);
+      cursor:pointer;
+      touch-action:none;
+      user-select:none;
+      -webkit-user-drag:none;
+      -webkit-user-select:none;
+      transform: rotate(45deg);
+      transform-origin: center center;
+    }
     .magnet { width:28px; height:28px; background:#165fa7; border-radius:50%; border:2px solid #1b4d86; box-shadow:1px 1px 4px rgba(0,0,0,0.25),0 0 0 12px rgba(0,0,0,0); cursor:pointer; touch-action:none; user-select:none; -webkit-user-drag:none; -webkit-user-select:none; position:relative; }
     .item { position:absolute; touch-action:none; user-select:none; }
     .item.paper { z-index:1; }
@@ -57,110 +73,113 @@
       let counts = { paper:0, magnet:0 };
       let history = [];
       let movingEl = null;
-      let offsetX = 0, offsetY = 0;function updateInfo(){
-    info.paper.textContent = counts.paper;
-    info.magnet.textContent = counts.magnet;
-    const need = counts.paper>0 ? 2*(counts.paper+1) : 0;
-    info.need.textContent = need;
-    if(counts.magnet>=need) info.bar.classList.replace('warn','good');
-    else                     info.bar.classList.replace('good','warn');
-  }
+      let offsetX = 0, offsetY = 0;
 
-  function resetAll(){
-    history.forEach(el => board.removeChild(el));
-    history = [];
-    counts = { paper:0, magnet:0 };
-    updateInfo();
-  }
-  resetBtn.addEventListener('click', resetAll);
+      function updateInfo(){
+        info.paper.textContent = counts.paper;
+        info.magnet.textContent = counts.magnet;
+        const need = counts.paper>0 ? 2*(counts.paper+1) : 0;
+        info.need.textContent = need;
+        if(counts.magnet>=need) info.bar.classList.replace('warn','good');
+        else                     info.bar.classList.replace('good','warn');
+      }
 
-  function undoLast(){
-    const el = history.pop();
-    if(el){
-      board.removeChild(el);
-      counts[el._type]--;
+      function resetAll(){
+        history.forEach(el => board.removeChild(el));
+        history = [];
+        counts = { paper:0, magnet:0 };
+        updateInfo();
+      }
+      resetBtn.addEventListener('click', resetAll);
+
+      function undoLast(){
+        const el = history.pop();
+        if(el){
+          board.removeChild(el);
+          counts[el._type]--;
+          updateInfo();
+        }
+      }
+      undoBtn.addEventListener('click', undoLast);
+
+      function clamp(val, min, max){ return Math.min(Math.max(val, min), max); }
+
+      function createItem(type){
+        const el = document.createElement('div');
+        el.className = `item ${type}`;
+        el._type = type;
+        el._isNew = true;
+        el._dragged = false;
+        el.addEventListener('dblclick', ()=>{
+          board.removeChild(el);
+          counts[type]--;
+          const idx = history.indexOf(el);
+          if(idx > -1) history.splice(idx, 1);
+          updateInfo();
+        });
+        el.addEventListener('pointerdown', e=>{
+          e.preventDefault();
+          movingEl = el;
+          // 要素中心を基準にずれなくドラッグ
+          offsetX = el.offsetWidth / 2;
+          offsetY = el.offsetHeight / 2;
+          document.addEventListener('pointermove', onPointerMove);
+          document.addEventListener('pointerup', onPointerUp);
+        });
+        board.appendChild(el);
+        return el;
+      }
+
+      function onPointerMove(e){
+        if(!movingEl) return;
+        const rect = board.getBoundingClientRect();
+        let x = e.clientX - rect.left - offsetX;
+        let y = e.clientY - rect.top - offsetY;
+        x = clamp(x, 0, rect.width - movingEl.offsetWidth);
+        y = clamp(y, 0, rect.height - movingEl.offsetHeight);
+        movingEl.style.left = x + 'px';
+        movingEl.style.top = y + 'px';
+        if(movingEl._isNew) movingEl._dragged = true;
+      }
+
+      function onPointerUp(e){
+        if(!movingEl) return;
+        const el = movingEl;
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        if(el._isNew){
+          counts[el._type]++;
+          history.push(el);
+          updateInfo();
+          el._isNew = false;
+        }
+        movingEl = null;
+      }
+
+      ['Paper','Magnet'].forEach(kind=>{
+        document.getElementById(`sample${kind}`).addEventListener('pointerdown', e=>{
+          e.preventDefault();
+          const type = kind.toLowerCase();
+          if(type==='paper' && counts.paper>=7){ alert('画用紙は最大7枚までです'); return; }
+          const el = createItem(type);
+          const rect = board.getBoundingClientRect();
+          // 生成時も中央をカーソル下に
+          offsetX = el.offsetWidth / 2;
+          offsetY = el.offsetHeight / 2;
+          let x = e.clientX - rect.left - offsetX;
+          let y = e.clientY - rect.top - offsetY;
+          x = clamp(x, 0, rect.width - el.offsetWidth);
+          y = clamp(y, 0, rect.height - el.offsetHeight);
+          el.style.left = x + 'px';
+          el.style.top = y + 'px';
+          movingEl = el;
+          document.addEventListener('pointermove', onPointerMove);
+         	document.addEventListener('pointerup', onPointerUp);
+        });
+      });
+
       updateInfo();
-    }
-  }
-  undoBtn.addEventListener('click', undoLast);
-
-  function clamp(val, min, max){ return Math.min(Math.max(val, min), max); }
-
-  function createItem(type){
-    const el = document.createElement('div');
-    el.className = `item ${type}`;
-    el._type = type;
-    el._isNew = true;
-    el._dragged = false;
-    el.addEventListener('dblclick', ()=>{
-      board.removeChild(el);
-      counts[type]--;
-      const idx = history.indexOf(el);
-      if(idx > -1) history.splice(idx, 1);
-      updateInfo();
-    });
-    el.addEventListener('pointerdown', e=>{
-      e.preventDefault();
-      movingEl = el;
-      offsetX = e.offsetX;
-      offsetY = e.offsetY;
-      document.addEventListener('pointermove', onPointerMove);
-      document.addEventListener('pointerup', onPointerUp);
-    });
-    board.appendChild(el);
-    return el;
-  }
-
-  function onPointerMove(e){
-    if(!movingEl) return;
-    const rect = board.getBoundingClientRect();
-    let x = e.clientX - rect.left - offsetX;
-    let y = e.clientY - rect.top - offsetY;
-    x = clamp(x, 0, rect.width - movingEl.offsetWidth);
-    y = clamp(y, 0, rect.height - movingEl.offsetHeight);
-    movingEl.style.left = x + 'px';
-    movingEl.style.top = y + 'px';
-    if(movingEl._isNew) movingEl._dragged = true;
-  }
-
-  function onPointerUp(e){
-    if(!movingEl) return;
-    const el = movingEl;
-    document.removeEventListener('pointermove', onPointerMove);
-    document.removeEventListener('pointerup', onPointerUp);
-    if(el._isNew){
-      counts[el._type]++;
-      history.push(el);
-      updateInfo();
-      el._isNew = false;
-    }
-    movingEl = null;
-  }
-
-  ['Paper','Magnet'].forEach(kind=>{
-    document.getElementById(`sample${kind}`).addEventListener('pointerdown', e=>{
-      e.preventDefault();
-      const type = kind.toLowerCase();
-      if(type==='paper' && counts.paper>=7){ alert('画用紙は最大7枚までです'); return; }
-      const el = createItem(type);
-      const rect = board.getBoundingClientRect();
-      offsetX = el.offsetWidth/2;
-      offsetY = el.offsetHeight/2;
-      let x = e.clientX - rect.left - offsetX;
-      let y = e.clientY - rect.top - offsetY;
-      x = clamp(x, 0, rect.width - el.offsetWidth);
-      y = clamp(y, 0, rect.height - el.offsetHeight);
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
-      movingEl = el;
-      document.addEventListener('pointermove', onPointerMove);
-      document.addEventListener('pointerup', onPointerUp);
-    });
-  });
-
-  updateInfo();
-})();
-
+    })();
   </script>
 </body>
 </html>
